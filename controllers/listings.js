@@ -1,7 +1,7 @@
 const Listing = require("../models/listing");
 const mbxGeocoding = require("@mapbox/mapbox-sdk/services/geocoding");
-const mapToken = process.env.MAPBOX_TOKEN;
-const accessToken = process.env.MY_ACCESS_TOKEN;
+const mapToken = process.env.MAPBOX_TOKEN || process.env.MAP_TOKEN || process.env.MY_ACCESS_TOKEN;
+const accessToken = process.env.MY_ACCESS_TOKEN || process.env.MAP_TOKEN || process.env.MAPBOX_TOKEN;
 
 const geoCodingClient = mbxGeocoding({ accessToken });
 
@@ -21,7 +21,7 @@ module.exports.showListing = async (req, res) => {
     .populate("owner");
   if (!listing) {
     req.flash("error", "Listing you requested for does not exist!");
-    res.redirect("/listings");
+    return res.redirect("/listings");
   }
   res.render("listings/show.ejs", { listing });
 };
@@ -40,7 +40,11 @@ module.exports.createListing = async (req, res, next) => {
   const newListing = new Listing(req.body.listing);
   newListing.owner = req.user._id;
   newListing.image = { filename, url };
-  newListing.geometry = response.body.features[0].geometry;
+  if (response.body.features && response.body.features.length > 0) {
+    newListing.geometry = response.body.features[0].geometry;
+  } else {
+    newListing.geometry = { type: "Point", coordinates: [77.209, 28.6139] };
+  }
   await newListing.save();
   req.flash("success", "New listing created!");
   res.redirect("/listings");
@@ -51,9 +55,9 @@ module.exports.renderEditForm = async (req, res) => {
   let listing = await Listing.findById(id);
   if (!listing) {
     req.flash("error", "Listing you trying to edit for does not exist!");
-    res.redirect("/listings");
+    return res.redirect("/listings");
   }
-  imageUrl = listing.image.url;
+  let imageUrl = listing.image.url;
   imageUrl = imageUrl.replace("/upload", "/upload/w_250,h_160");
   res.render("listings/edit.ejs", { listing, imageUrl });
 };
@@ -67,7 +71,9 @@ module.exports.updateListing = async (req, res, next) => {
     })
     .send();
 
-  req.body.listing.geometry = response.body.features[0].geometry;
+  if (response.body.features && response.body.features.length > 0) {
+    req.body.listing.geometry = response.body.features[0].geometry;
+  }
   let updatedListing = await Listing.findByIdAndUpdate(id, {
     ...req.body.listing,
   });
@@ -95,10 +101,11 @@ module.exports.filter = async (req, res, next) => {
 };
 
 module.exports.search = async (req, res) => {
-  let input = req.query.q.trim().replace(/\s+/g, " ");
+  let q = req.query.q || "";
+  let input = q.trim().replace(/\s+/g, " ");
   if (input == "" || input == " ") {
     req.flash("error", "Please enter search query!");
-    res.redirect("/listings");
+    return res.redirect("/listings");
   }
 
   let data = input.split("");
@@ -169,7 +176,7 @@ module.exports.search = async (req, res) => {
   }
   if (allListings.length == 0) {
     req.flash("error", "No listings found based on your search!");
-    res.redirect("/listings");
+    return res.redirect("/listings");
   }
 };
 
