@@ -2,6 +2,8 @@ if (process.env.NODE_ENV != "production") {
   require("dotenv").config();
 }
 
+
+const { queryLimiter } = require("./rateLimiter.js");
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
@@ -100,10 +102,10 @@ app.use("/listings/:id/reviews", reviewRouter);
 app.use("/", userRouter);
 
 // Mount GraphQL endpoint for read-only listing queries
-app.all("/graphql", graphqlHandler);
+app.all("/graphql", queryLimiter,  graphqlHandler);
 
 // Optional REST JSON endpoint for listing cards (apples-to-apples comparison)
-app.get("/api/listings", async (req, res, next) => {
+app.get("/api/listings", queryLimiter, async (req, res, next) => {
   try {
     const { category, search, minPrice, maxPrice, limit = 50, offset = 0 } = req.query;
     const mongoQuery = {};

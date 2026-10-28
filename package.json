@@ -27,6 +27,7 @@
     "ejs": "^3.1.10",
     "ejs-mate": "^4.0.0",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.18.0",
     "graphql": "^16.14.2",
     "graphql-http": "^1.23.1",
